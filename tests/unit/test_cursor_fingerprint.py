@@ -3,7 +3,6 @@
 
 from base64 import b64encode
 from dataclasses import replace
-from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -11,7 +10,7 @@ from meridian_storage.query import CursorSigner, InvalidCursor, PageSpec
 
 from meridian_storage.adapters.clickhouse import ClickHouseQueryTranslator, ClickHouseSettings
 from meridian_storage.adapters.clickhouse.query import compile_simple_query
-from tests.conftest import build_binding
+from tests.conftest import ANCHOR_DAY, ANCHOR_DAY_END, ANCHOR_NOON, build_binding
 from tests.unit.test_query import _logical_query, _translation
 
 
@@ -28,7 +27,12 @@ def compile_page(layout, signer, *, wire, cursor=None, context_changes=None, inp
         compiled = translator.compile_wire(operation, context)
     else:
         value = {
-            "where": {"observed_at": {"gte": "2026-08-25T00:00:00Z", "lt": "2026-08-26T00:00:00Z"}},
+            "where": {
+                "observed_at": {
+                    "gte": f"{ANCHOR_DAY}T00:00:00Z",
+                    "lt": f"{ANCHOR_DAY_END}T00:00:00Z",
+                }
+            },
             "limit": 2,
             **({"cursor": cursor} if cursor else {}),
             **(input_changes or {}),
@@ -46,7 +50,7 @@ def issue_legacy_cursor(signer, compiled, fingerprint, identity="same-series"):
         registry_fingerprint=command["registryFingerprint"],
         scope_fingerprint=command["scopeFingerprint"],
         page_size=command["pageSize"],
-        sort_tuple=("2026-08-25T12:00:00Z", identity, fingerprint),
+        sort_tuple=(f"{ANCHOR_DAY}T12:00:00Z", identity, fingerprint),
     )
 
 
@@ -58,7 +62,7 @@ def test_fingerprint_cursor_resumes_at_raw_storage_boundary(layout, wire, prefix
     translator, compiled = compile_page(layout, signer, wire=wire)
     fingerprint = prefix * 64
     raw_fingerprint = fingerprint.encode() if as_bytes else fingerprint
-    timestamp = datetime(2026, 8, 25, 12, tzinfo=UTC)
+    timestamp = ANCHOR_NOON
     result = translator.normalize_result(
         compiled,
         SimpleNamespace(

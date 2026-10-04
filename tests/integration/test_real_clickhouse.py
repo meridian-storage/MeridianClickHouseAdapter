@@ -20,6 +20,8 @@ from meridian_storage.adapters.clickhouse import (
     plan_initial_migration,
 )
 from tests.conftest import (
+    ANCHOR_DAY,
+    ANCHOR_DAY_END,
     REGISTRY_FINGERPRINT,
     RESOURCE_FINGERPRINT,
     build_create_context,
@@ -165,8 +167,8 @@ def _query_request(layout, *, aggregate: bool) -> ExecutionRequest:  # type: ign
         "resource": layout.resource.to_dict(),
         "where": {
             "observed_at": {
-                "gte": "2026-08-25T00:00:00Z",
-                "lt": "2026-08-26T00:00:00Z",
+                "gte": f"{ANCHOR_DAY}T00:00:00Z",
+                "lt": f"{ANCHOR_DAY_END}T00:00:00Z",
             }
         },
     }
@@ -276,7 +278,7 @@ def test_usage_decimal_round_trip(real_engine, name: str) -> None:  # type: igno
             if field.nullable
             else value
             if kind == "decimal"
-            else "2026-09-06T00:00:00.123456Z"
+            else f"{ANCHOR_DAY}T00:00:00.123456Z"
             if kind == "utcTimestamp"
             else {}
             if kind == "json"
@@ -314,7 +316,10 @@ def test_usage_decimal_round_trip(real_engine, name: str) -> None:  # type: igno
                 read_only=True,
                 input={
                     "where": {
-                        "windowStart": {"gte": "2026-09-06T00:00:00Z", "lt": "2026-09-07T00:00:00Z"}
+                        "windowStart": {
+                            "gte": f"{ANCHOR_DAY}T00:00:00Z",
+                            "lt": f"{ANCHOR_DAY_END}T00:00:00Z",
+                        }
                     },
                     "limit": 10,
                 },
@@ -389,7 +394,7 @@ def test_telemetry_fields_round_trip(real_engine, profile) -> None:
         plan_initial_migration(profile + "-fidelity", (compilation,))
     )
     record = {
-        **sample_record(observed_at="2026-09-07T00:00:00.123456Z"),
+        **sample_record(observed_at=f"{ANCHOR_DAY}T00:00:00.123456Z"),
         "trace_id": "//79/Pv6+fj39vX08/Lx8A==",
         "span_id": "AAECAwQFBgc=",
         "payload": {
@@ -417,7 +422,10 @@ def test_telemetry_fields_round_trip(real_engine, profile) -> None:
                 read_only=True,
                 input={
                     "where": {
-                        "observed_at": {"gte": "2026-09-07T00:00:00Z", "lt": "2026-09-08T00:00:00Z"}
+                        "observed_at": {
+                            "gte": f"{ANCHOR_DAY}T00:00:00Z",
+                            "lt": f"{ANCHOR_DAY_END}T00:00:00Z",
+                        }
                     },
                     "limit": 10,
                 },

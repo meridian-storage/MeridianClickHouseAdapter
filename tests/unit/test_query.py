@@ -23,7 +23,7 @@ from meridian_storage.query import (
 
 from meridian_storage.adapters.clickhouse import ClickHouseQueryTranslator, ClickHouseSettings
 from meridian_storage.adapters.clickhouse.query import compile_simple_query
-from tests.conftest import REGISTRY_FINGERPRINT, build_binding
+from tests.conftest import ANCHOR_DAY, ANCHOR_DAY_END, REGISTRY_FINGERPRINT, build_binding
 
 
 def _logical_query(layout, *, cursor=None):  # type: ignore[no-untyped-def]
@@ -33,8 +33,8 @@ def _logical_query(layout, *, cursor=None):  # type: ignore[no-untyped-def]
         operation="scan",
         filter=TimestampRange(
             Field("observed_at"),
-            Literal("2026-08-25T00:00:00Z", "utcTimestamp"),
-            Literal("2026-08-26T00:00:00Z", "utcTimestamp"),
+            Literal(f"{ANCHOR_DAY}T00:00:00Z", "utcTimestamp"),
+            Literal(f"{ANCHOR_DAY_END}T00:00:00Z", "utcTimestamp"),
         ),
         page=PageSpec(2, cursor),
         consistency="eventual",
@@ -64,7 +64,7 @@ def test_query_is_scope_first_bounded_and_parameterized(layout) -> None:  # type
     assert isinstance(sql, str)
 
     assert "WHERE `_meridian_scope_fingerprint` = {p" in sql
-    assert "2026-08-25" not in sql
+    assert ANCHOR_DAY not in sql
     assert "LIMIT 3" in sql
     assert "3" * 64 in compiled.parameters.values()
 
@@ -206,8 +206,8 @@ def test_released_query_planner_contract_compiles_natively(layout) -> None:  # t
         operation="scan",
         filter=TimestampRange(
             Field("observed_at"),
-            Literal("2026-08-25T00:00:00Z", "utcTimestamp"),
-            Literal("2026-08-26T00:00:00Z", "utcTimestamp"),
+            Literal(f"{ANCHOR_DAY}T00:00:00Z", "utcTimestamp"),
+            Literal(f"{ANCHOR_DAY_END}T00:00:00Z", "utcTimestamp"),
         ),
         page=PageSpec(50),
         consistency="eventual",

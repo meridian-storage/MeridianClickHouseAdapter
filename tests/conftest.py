@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from meridian_storage.runtime import BindingConfig
@@ -32,6 +33,20 @@ from meridian_storage.adapters.clickhouse import (
 
 RESOURCE_FINGERPRINT = "sha256:" + "1" * 64
 REGISTRY_FINGERPRINT = "sha256:" + "2" * 64
+
+
+def _anchor_day() -> datetime:
+    # Real-engine fixtures must stay inside the 30-day table TTL: a standalone
+    # MergeTree server materializes expired TTL parts as soon as it restarts
+    # (materialize_ttl_after_load), so hardcoded historical timestamps rot as
+    # wall-clock time passes. Anchor every real-engine timestamp to yesterday.
+    return datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+
+
+ANCHOR = _anchor_day()
+ANCHOR_DAY = ANCHOR.strftime("%Y-%m-%d")
+ANCHOR_DAY_END = (ANCHOR + timedelta(days=1)).strftime("%Y-%m-%d")
+ANCHOR_NOON = ANCHOR.replace(hour=12)
 
 
 def build_schema(*, catalog: str = "evidence") -> SchemaDocument:
@@ -211,11 +226,11 @@ def build_request(
 def sample_record(
     *,
     series_id: str = "series-1",
-    observed_at: str = "2026-08-25T12:00:00Z",
+    observed_at: str | None = None,
     value: float = 42.5,
 ) -> dict[str, JsonValue]:
     return {
-        "observed_at": observed_at,
+        "observed_at": observed_at or f"{ANCHOR_DAY}T12:00:00Z",
         "series_id": series_id,
         "service": "checkout",
         "value": value,
