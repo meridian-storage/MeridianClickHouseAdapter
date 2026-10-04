@@ -21,6 +21,7 @@ from meridian_storage.adapters.clickhouse import (
     plan_initial_migration,
 )
 from tests.conftest import (
+    ANCHOR_DAY,
     RESOURCE_FINGERPRINT,
     build_create_context,
     build_layout,
@@ -258,7 +259,7 @@ def test_replicated_nanosecond_append_read_and_pagination(replicated_engine):
     from dataclasses import replace
 
     clients, layout = replicated_engine
-    times = [f"2026-08-25T12:00:00.123456{value}Z" for value in (789, 790, 791)]
+    times = [f"{ANCHOR_DAY}T12:00:00.123456{value}Z" for value in (789, 790, 791)]
     records = [sample_record(observed_at=t, series_id=f"nano-{i}") for i, t in enumerate(times)]
     request = build_request(layout, records=records, scope={"suite": "replicated-nano"})
     for index in (0, 1):

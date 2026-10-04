@@ -2,7 +2,7 @@
 """Real primary timestamp fidelity through adapter and released Observability queries."""
 
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from meridian_storage.plugins.observability import EvidenceResources, TelemetryQueries
@@ -43,6 +43,8 @@ from meridian_storage.adapters.clickhouse import (
 from meridian_storage.adapters.clickhouse._canonical import scope_fingerprint
 from meridian_storage.adapters.clickhouse.ingestion import prepare_batch
 from tests.conftest import (
+    ANCHOR_DAY,
+    ANCHOR_NOON,
     REGISTRY_FINGERPRINT,
     RESOURCE_FINGERPRINT,
     build_create_context,
@@ -51,8 +53,9 @@ from tests.conftest import (
 from tests.integration.test_real_clickhouse import real_engine as real_engine
 
 pytestmark = pytest.mark.integration
-TIMES = tuple(f"2026-08-25T12:00:00.123456{n:03d}Z" for n in (789, 790, 791, 791))
-NANOS = (1787659200123456789, 1787659200123456790, 1787659200123456791, 1787659200123456791)
+TIMES = tuple(f"{ANCHOR_DAY}T12:00:00.123456{n:03d}Z" for n in (789, 790, 791, 791))
+_NANO_BASE = int(ANCHOR_NOON.timestamp()) * 1_000_000_000 + 123_456_789
+NANOS = (_NANO_BASE, _NANO_BASE + 1, _NANO_BASE + 2, _NANO_BASE + 2)
 
 
 @pytest.mark.parametrize("profile", ["log", "span", "metric"])
@@ -161,8 +164,8 @@ def test_exact_primary_timestamps_through_public_reads(real_engine, profile):
 
         queries = TelemetryQueries(Executor(), EvidenceResources(resource, resource, resource))
         bounds = {
-            "start": datetime(2026, 8, 25, 12, tzinfo=UTC),
-            "end": datetime(2026, 8, 25, 12, tzinfo=UTC) + timedelta(seconds=1),
+            "start": ANCHOR_NOON,
+            "end": ANCHOR_NOON + timedelta(seconds=1),
         }
         query = (
             queries.logs(**bounds)
@@ -205,8 +208,8 @@ def test_exact_primary_timestamps_through_public_reads(real_engine, profile):
                 operation="scan",
                 filter=TimestampRange(
                     Field("observedTime"),
-                    Literal("2026-08-25T12:00:00Z", "utcTimestamp"),
-                    Literal("2026-08-25T12:00:01Z", "utcTimestamp"),
+                    Literal(f"{ANCHOR_DAY}T12:00:00Z", "utcTimestamp"),
+                    Literal(f"{ANCHOR_DAY}T12:00:01Z", "utcTimestamp"),
                 ),
                 order=(Sort(Field("observedTime"), "desc"), Sort(Field("evidenceId"), "asc")),
                 result=ResultSpec(

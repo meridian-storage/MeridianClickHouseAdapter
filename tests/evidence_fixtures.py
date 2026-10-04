@@ -24,7 +24,13 @@ from meridian_storage.adapters.clickhouse import (
     ClickHouseSettings,
     plan_initial_migration,
 )
-from tests.conftest import build_create_context, build_schema, sample_record
+from tests.conftest import (
+    ANCHOR_DAY,
+    ANCHOR_DAY_END,
+    build_create_context,
+    build_schema,
+    sample_record,
+)
 
 
 def core_fixture(clients, endpoints, topology):
@@ -195,9 +201,9 @@ def append_and_assert(make_runtime, layout, *, seed):
         {**sample_record(series_id="same-identity", value=float(i)), "observed_at": stamp}
         for i, stamp in enumerate(
             (
-                "2026-08-25T00:00:00.000000001Z",
-                "2026-08-25T00:00:00.000000001Z",
-                "2026-08-25T00:00:00.000000002Z",
+                f"{ANCHOR_DAY}T00:00:00.000000001Z",
+                f"{ANCHOR_DAY}T00:00:00.000000001Z",
+                f"{ANCHOR_DAY}T00:00:00.000000002Z",
             )
         )
     ]
@@ -235,7 +241,10 @@ def append_and_assert(make_runtime, layout, *, seed):
             query = {
                 "resource": layout.resource,
                 "where": {
-                    "observed_at": {"gte": "2026-08-25T00:00:00Z", "lt": "2026-08-26T00:00:00Z"}
+                    "observed_at": {
+                        "gte": f"{ANCHOR_DAY}T00:00:00Z",
+                        "lt": f"{ANCHOR_DAY_END}T00:00:00Z",
+                    }
                 },
                 "limit": 1,
             }
